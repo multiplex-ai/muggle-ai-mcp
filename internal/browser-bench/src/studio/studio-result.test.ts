@@ -86,3 +86,36 @@ describe("toTaskResult", () => {
     expect(toTaskResult(studioResult()).tokensUsed).toBe(0);
   });
 });
+
+describe("token totals", () => {
+  const withTokens = (extra: Record<string, unknown>) =>
+    JSON.stringify({
+      taskId: "Allrecipes--0",
+      finalAnswer: "answer",
+      studioStatus: "success",
+      stepCount: 3,
+      durationMs: 1000,
+      trajectoryDir: "C:/out/t",
+      ...extra,
+    });
+
+  it("carries the run's token spend onto the result", () => {
+    const parsed = parseStudioResult({
+      jsonContent: withTokens({ inputTokens: 900, outputTokens: 100, totalTokens: 1000 }),
+      expectedTaskId: "Allrecipes--0",
+    });
+
+    expect(toTaskResult(parsed).tokensUsed).toBe(1000);
+  });
+
+  it("reads zero for a studio build that predates token reporting", () => {
+    // Older studio builds write no token fields. Treating that as zero keeps a
+    // mixed-build batch parseable; the report's total simply understates.
+    const parsed = parseStudioResult({
+      jsonContent: withTokens({}),
+      expectedTaskId: "Allrecipes--0",
+    });
+
+    expect(toTaskResult(parsed).tokensUsed).toBe(0);
+  });
+});

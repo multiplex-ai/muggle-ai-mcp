@@ -21,6 +21,8 @@ export interface StudioResultFile {
   stepCount: number;
   durationMs: number;
   trajectoryDir: string;
+  /** Absent on studio builds that predate token reporting; read as 0. */
+  totalTokens?: number;
 }
 
 /** Everything one studio process needs to attempt one task. */

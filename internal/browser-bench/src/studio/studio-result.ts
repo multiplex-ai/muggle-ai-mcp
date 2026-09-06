@@ -51,6 +51,10 @@ export const parseStudioResult = ({
     stepCount: requireNumber(record, "stepCount"),
     durationMs: requireNumber(record, "durationMs"),
     trajectoryDir: requireString(record, "trajectoryDir"),
+    // Optional, not required: a studio build older than token reporting writes no
+    // such field, and refusing to parse its result would turn a scoreable attempt
+    // into an infrastructure error over a missing cost figure.
+    totalTokens: typeof record.totalTokens === "number" ? record.totalTokens : undefined,
   };
 
   if (studioResult.taskId !== expectedTaskId) {
@@ -66,11 +70,12 @@ export const parseStudioResult = ({
  * Maps a studio result onto the harness's record of the attempt.
  *
  * The outcome here is studio's own claim; `judgeVerdict` stays unset until the
- * judging pass overrules it. `tokensUsed` is 0 because studio does not report
- * token spend yet — the field is real, the number is not measured.
+ * judging pass overrules it. `tokensUsed` reads 0 on studio builds older than
+ * token reporting, which understates a mixed-build batch's total rather than
+ * failing it.
  *
  * Output shape: `{ taskId: "Allrecipes--0", outcome: "pass", studioStatus: "success",
- * stepCount: 7, durationMs: 41230, tokensUsed: 0, trajectoryDir: "…" }`
+ * stepCount: 7, durationMs: 41230, tokensUsed: 48210, trajectoryDir: "…" }`
  */
 export const toTaskResult = (studioResult: StudioResultFile): TaskResult => ({
   taskId: studioResult.taskId,
@@ -82,6 +87,6 @@ export const toTaskResult = (studioResult: StudioResultFile): TaskResult => ({
   studioStatus: studioResult.studioStatus,
   stepCount: studioResult.stepCount,
   durationMs: studioResult.durationMs,
-  tokensUsed: 0,
+  tokensUsed: studioResult.totalTokens ?? 0,
   trajectoryDir: studioResult.trajectoryDir,
 });
