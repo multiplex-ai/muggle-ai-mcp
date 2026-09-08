@@ -255,6 +255,10 @@ exports[`MCP tool surface (Lazy-core parity oracle) > advertises the exact name 
     "name": "muggle-remote-test-case-update",
   },
   {
+    "description": "Queue a full rebuild of a project's test-plan dependency graph: every node is dropped and the dependency analysis runs again across the whole project. Needed because the incremental analysis only ever adds nodes for test cases that have none — a case already stored as a root stays a root even once a prerequisite for it exists, so a rebuild is the only way to re-derive those edges. Reach for this when muggle-remote-test-case-ancestors-get reports \`orphan: true\` across a project, which means nothing is ordering prerequisites and bulk replays are running cases that destroy each other's fixtures. Returns { projectId, workflowRuntimeId }: it resolves when the rebuild is QUEUED, not when it has finished, and it returns no graph — re-fetch the graph, or call muggle-remote-test-case-ancestors-get again, to observe the result.",
+    "name": "muggle-remote-test-plan-graph-rebuild",
+  },
+  {
     "description": "Delete a test script by ID. This is a soft delete; the test case it belongs to is not affected.",
     "name": "muggle-remote-test-script-delete",
   },
@@ -490,6 +494,7 @@ exports[`MCP tool surface (Lazy-core parity oracle) > advertises the exact set o
   "muggle-remote-test-case-list",
   "muggle-remote-test-case-list-by-use-case",
   "muggle-remote-test-case-update",
+  "muggle-remote-test-plan-graph-rebuild",
   "muggle-remote-test-script-delete",
   "muggle-remote-test-script-get",
   "muggle-remote-test-script-list",

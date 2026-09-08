@@ -325,6 +325,19 @@ const testCaseTools: IQaToolDefinition[] = [
     },
   },
   {
+    name: "muggle-remote-test-plan-graph-rebuild",
+    description:
+      "Queue a full rebuild of a project's test-plan dependency graph: every node is dropped and the dependency analysis runs again across the whole project. Needed because the incremental analysis only ever adds nodes for test cases that have none — a case already stored as a root stays a root even once a prerequisite for it exists, so a rebuild is the only way to re-derive those edges. Reach for this when muggle-remote-test-case-ancestors-get reports `orphan: true` across a project, which means nothing is ordering prerequisites and bulk replays are running cases that destroy each other's fixtures. Returns { projectId, workflowRuntimeId }: it resolves when the rebuild is QUEUED, not when it has finished, and it returns no graph — re-fetch the graph, or call muggle-remote-test-case-ancestors-get again, to observe the result.",
+    inputSchema: schemas.TestPlanGraphRebuildInputSchema,
+    mapToUpstream: (input) => {
+      const toolInput = input as z.infer<typeof schemas.TestPlanGraphRebuildInputSchema>;
+      return {
+        method: "POST",
+        path: `${MUGGLE_TEST_PREFIX}/projects/${toolInput.projectId}/test-plan-graph/rebuild`,
+      };
+    },
+  },
+  {
     name: "muggle-remote-test-case-list-by-use-case",
     description: "List test cases for a specific use case.",
     inputSchema: schemas.TestCaseListByUseCaseInputSchema,
