@@ -12,6 +12,7 @@ Run once the target `testCaseId` is chosen and the local URL + services are conf
 
 1. **Resolve the chain.** `muggle-remote-test-case-ancestors-get` with the target `testCaseId`. Response: `{ testCaseId, ancestors, orphan }`.
    - `orphan: true` **or** empty `ancestors` → no prerequisites. Skip the rest; continue to Step 5.
+     One orphan is ordinary. **Every** case in a project reading `orphan: true` is not — it means the graph was never built, so nothing orders prerequisites and a bulk replay runs cases that destroy each other's fixtures (one empties a household another needs). Queue `muggle-remote-test-plan-graph-rebuild` for the project, then re-read the chain. It only queues the work, so the graph is not ready the moment it returns.
    - Otherwise `ancestors` is ordered **immediate-parent → root**. Reverse it to **root-first** so prerequisites are satisfied bottom-up.
 
 2. **For each ancestor, root-first:**
