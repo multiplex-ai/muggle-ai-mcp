@@ -26,6 +26,25 @@ describe("renderReport", () => {
     expect(markdown).toContain("infrastructure errors 1");
   });
 
+  it("keeps bot-defence blocks out of the denominator and gives them their own line", () => {
+    const markdown = renderReport([
+      result("a", BenchmarkOutcome.Pass),
+      result("b", BenchmarkOutcome.Fail),
+      result("c", BenchmarkOutcome.Blocked),
+      result("d", BenchmarkOutcome.Blocked),
+    ]);
+
+    expect(markdown).toContain("50.0%");
+    expect(markdown).toContain("scored 2");
+    expect(markdown).toContain("**Blocked by bot defence:** 2");
+  });
+
+  it("still prints the blocked line at zero, so a clean run says so rather than staying silent", () => {
+    expect(renderReport([result("a", BenchmarkOutcome.Pass)])).toContain(
+      "**Blocked by bot defence:** 0",
+    );
+  });
+
   it("reports 0.0% rather than dividing by zero when every task errored", () => {
     const markdown = renderReport([result("a", BenchmarkOutcome.Error)]);
 
