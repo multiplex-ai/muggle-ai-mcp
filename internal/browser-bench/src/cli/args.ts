@@ -9,6 +9,15 @@ const readFlagValue = (argv: string[], flagIndex: number): string => {
   return value;
 };
 
+const readInteger = (argv: string[], flagIndex: number): number => {
+  const rawValue = readFlagValue(argv, flagIndex);
+  const parsedValue = Number(rawValue);
+  if (!Number.isInteger(parsedValue)) {
+    throw new Error(`${argv[flagIndex]} needs a whole number, got "${rawValue}".`);
+  }
+  return parsedValue;
+};
+
 const readPositiveInteger = (argv: string[], flagIndex: number): number => {
   const rawValue = readFlagValue(argv, flagIndex);
   const parsedValue = Number(rawValue);
@@ -73,11 +82,26 @@ export const parseCliArgs = ({
       case CliFlag.MaxSteps:
         options.maxSteps = readPositiveInteger(argv, index);
         break;
+      case CliFlag.SampleSize:
+        options.sampleSize = readPositiveInteger(argv, index);
+        break;
+      case CliFlag.SampleSeed:
+        options.sampleSeed = readInteger(argv, index);
+        break;
       default:
         throw new Error(`Unknown flag ${flag}. Accepted: ${Object.values(CliFlag).join(", ")}.`);
     }
 
     index += 2;
+  }
+
+  // A sample without a seed cannot be regenerated, which makes the score it
+  // produces impossible to check. Refuse rather than invent a seed.
+  if ((options.sampleSize === undefined) !== (options.sampleSeed === undefined)) {
+    throw new Error(
+      `${CliFlag.SampleSize} and ${CliFlag.SampleSeed} must be given together — ` +
+        `a sample drawn without a recorded seed cannot be reproduced.`,
+    );
   }
 
   return options;

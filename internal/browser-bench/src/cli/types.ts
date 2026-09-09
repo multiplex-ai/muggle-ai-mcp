@@ -6,6 +6,8 @@ export enum CliFlag {
   Out = "--out",
   Resume = "--resume",
   MaxSteps = "--max-steps",
+  SampleSize = "--sample-size",
+  SampleSeed = "--sample-seed",
 }
 
 /** One benchmark run's configuration, with every default already resolved. */
@@ -18,4 +20,8 @@ export interface BenchmarkCliOptions {
   resume: boolean;
   /** Steps an agent may take per task. Defaults to WebVoyager's own cap. */
   maxSteps: number;
+  /** Absent means run the task file as given, with no sampling. */
+  sampleSize?: number;
+  /** Selects the draw. Required whenever `sampleSize` is set, so a slice is always reproducible. */
+  sampleSeed?: number;
 }

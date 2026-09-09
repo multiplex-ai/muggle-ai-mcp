@@ -89,3 +89,32 @@ describe("step budget flag", () => {
     ).toThrow(/max-steps/i);
   });
 });
+
+describe("sampling flags", () => {
+  const parse = (argv: string[]) =>
+    parseCliArgs({ argv: argv, defaultTasksPath: "t.jsonl", defaultOutDir: "out" });
+
+  it("leaves sampling off by default, so the task file runs as given", () => {
+    expect(parse([]).sampleSize).toBeUndefined();
+    expect(parse([]).sampleSeed).toBeUndefined();
+  });
+
+  it("accepts a size and seed together", () => {
+    const options = parse(["--sample-size", "100", "--sample-seed", "20260906"]);
+
+    expect(options.sampleSize).toBe(100);
+    expect(options.sampleSeed).toBe(20260906);
+  });
+
+  it("refuses a sample size with no seed, which would be irreproducible", () => {
+    expect(() => parse(["--sample-size", "100"])).toThrow(/must be given together/);
+  });
+
+  it("refuses a seed with no sample size", () => {
+    expect(() => parse(["--sample-seed", "7"])).toThrow(/must be given together/);
+  });
+
+  it("rejects a sample size that is not a positive whole number", () => {
+    expect(() => parse(["--sample-size", "0", "--sample-seed", "7"])).toThrow(/sample-size/i);
+  });
+});
