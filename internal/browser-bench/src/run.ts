@@ -39,6 +39,7 @@ import { resolveBenchmarkSessionPath } from "./studio/benchmark-session";
 import { spawnStudioProcess } from "./studio/node-studio-spawn";
 import { runStudioTaskAsync } from "./studio/studio-runner";
 import { loadWebVoyagerTasks } from "./task-source/webvoyager-source";
+import { selectStratifiedSample } from "./task-source/stratified-sample";
 
 const TOOL_DIR = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -61,10 +62,19 @@ const mainAsync = async (): Promise<void> => {
   const allTasks = loadWebVoyagerTasks(
     fs.readFileSync(options.tasksPath, "utf8"),
   );
+  // Sampling picks which tasks; --limit then truncates whatever that produced.
+  const selectedTasks =
+    options.sampleSize === undefined
+      ? allTasks
+      : selectStratifiedSample({
+          tasks: allTasks,
+          sampleSize: options.sampleSize,
+          seed: options.sampleSeed!,
+        });
   const tasks =
     options.taskLimit === undefined
-      ? allTasks
-      : allTasks.slice(0, options.taskLimit);
+      ? selectedTasks
+      : selectedTasks.slice(0, options.taskLimit);
 
   fs.mkdirSync(options.outDir, { recursive: true });
   const partialLogPath = path.join(options.outDir, PARTIAL_LOG_FILENAME);

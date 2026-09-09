@@ -2,9 +2,10 @@
 
 Internal harness that measures the browser agent against
 [WebVoyager](https://github.com/MinorJerry/WebVoyager) — 643 open-web tasks over
-15 live sites. It runs one studio process per task, records what studio reports,
-and renders a batch report. Judging is a separate later pass, so `judgeVerdict`
-stays unset here and the reported outcome is studio's own claim.
+15 live sites. It runs one studio process per task, judges the trajectory, and
+renders a batch report. Studio's own `studioStatus` is recorded for diagnosis but
+never scores the run — the outcome comes from the judge reading the final answer
+against the screenshots.
 
 ## Running
 
@@ -19,6 +20,13 @@ tsx internal/browser-bench/src/run.ts [flags]
 | `--concurrency <n>` | `2` | Parallel studio processes |
 | `--out <dir>` | `reports/` | Where trajectories, profiles, and the report land |
 | `--resume` | off | Skip tasks already recorded in `<out>/partial.jsonl` |
+| `--max-steps <n>` | `15` | Steps an agent may take per task |
+| `--sample-size <n>` | whole file | Draw a site-stratified sample of `n` tasks |
+| `--sample-seed <n>` | — | Seed for that draw; required with `--sample-size` |
+
+Raising `--max-steps` above WebVoyager's cap of 15 makes the score
+incomparable to published WebVoyager results, so the report says so in its
+header whenever it is raised.
 
 Concurrency is memory-bound: every task is a full Electron instance, so raising
 it past what the machine's RAM allows makes tasks fail for reasons the benchmark
@@ -81,7 +89,9 @@ any other status a fail. A non-zero exit, a missing or unreadable result file,
 or outliving `TASK_TIMEOUT_MS` (10 minutes) kills the process and records an
 infrastructure error instead, which is excluded from the pass-rate denominator.
 
-`tokensUsed` is recorded as `0`: studio does not report token spend yet.
+`tokensUsed` carries studio's reported spend for the attempt, so a score is
+always reportable next to what it cost. A build that predates token reporting
+omits the field and records `0` rather than failing the parse.
 
 ### Environment
 
@@ -115,6 +125,20 @@ curl -L -o /tmp/WebVoyager_data.jsonl \
 tsx internal/browser-bench/src/run.ts --tasks /tmp/WebVoyager_data.jsonl --out /tmp/wv-full
 ```
 
+### Reproducible slices
+
+The full 643 tasks take a long time and a lot of tokens, so a measurement
+usually runs a sample. Draw it by seed rather than by hand:
+
+```
+tsx internal/browser-bench/src/run.ts   --tasks /tmp/WebVoyager_data.jsonl --sample-size 100 --sample-seed 20260906
+```
+
+Each site keeps its share of the sample, so the slice exercises the same breadth
+of page structures as the full set. The draw depends on the seed alone, so
+quoting the seed is enough for anyone to rebuild the exact task list a score was
+measured on — no slice file to pass around, and nothing to drift.
+
 WebVoyager tasks run against the live web, so some are unanswerable on any given
 day — a site redesign, a paywall, or a deleted page. Published WebVoyager scores
 carry the same caveat.
@@ -131,7 +155,7 @@ internal/browser-bench/
     partial-log/    partial.jsonl round-trip, resume filter, result ordering
     report/         Markdown report
     studio/         the spawn contract: task/result files, runner, node adapters
-    task-source/    WebVoyager JSONL loader
-    judge/          WebVoyager judge protocol (not yet wired into a run)
+    task-source/    WebVoyager JSONL loader and the stratified sampler
+    judge/          WebVoyager judge protocol, run as each task lands
     run.ts          CLI entrypoint
 ```
