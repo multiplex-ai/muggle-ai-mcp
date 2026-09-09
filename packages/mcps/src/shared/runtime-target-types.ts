@@ -33,6 +33,8 @@ export interface IRuntimeTargetProfile {
   promptServiceBaseUrl: string;
   /** Base URL of the dashboard web app for this target, without a trailing slash. */
   uiBaseUrl: string;
+  /** Base URL for PR dashboard links (e.g., dashboard projects list), without a trailing slash. */
+  dashboardBaseUrl: string;
   /** Auth0 domain used for the device code login flow. */
   auth0Domain: string;
   /** Auth0 client ID for the device code grant. Empty when the target has no provisioned client. */
