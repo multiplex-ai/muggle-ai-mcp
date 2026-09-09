@@ -40,7 +40,7 @@ const withSentinel = <T extends string | null>(s: T): T =>
 async function resolveDashboardBaseUrl (stderrWrite: (s: string) => void): Promise<string> {
   try {
     const mcps = await import("../../packages/mcps/src/index.js");
-    return `${mcps.resolveActiveProfile().uiBaseUrl}/dashboard/projects`;
+    return mcps.resolveActiveProfile().dashboardBaseUrl;
   } catch (err) {
     stderrWrite(
       `build-pr-section: could not resolve the runtime target, linking to production: ${errMsg(err)}\n`,

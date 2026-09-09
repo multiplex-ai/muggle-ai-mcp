@@ -17,7 +17,7 @@ import type {
   ITokenResponse,
 } from "../types/index.js";
 import { DeviceCodePollStatus } from "../types/index.js";
-import { isStoredAuthForRuntimeTarget } from "./stored-auth-target.js";
+import { isStoredAuthForRuntimeTarget, extractJwtIssuer } from "./stored-auth-target.js";
 
 /** Default timeout for waiting on browser login completion. */
 const DEFAULT_LOGIN_WAIT_TIMEOUT_MS = 120000;
@@ -110,7 +110,7 @@ export class AuthService {
       throw new Error(`Failed to start device code flow: ${response.status} ${errorText}`);
     }
 
-    const data = (await response.json()) as {
+    const deviceCodeResponse = (await response.json()) as {
       device_code: string;
       user_code: string;
       verification_uri: string;
@@ -120,18 +120,18 @@ export class AuthService {
     };
 
     logger.info("Device code flow started", {
-      userCode: data.user_code,
-      verificationUri: data.verification_uri,
-      expiresIn: data.expires_in,
+      userCode: deviceCodeResponse.user_code,
+      verificationUri: deviceCodeResponse.verification_uri,
+      expiresIn: deviceCodeResponse.expires_in,
     });
 
     this.storePendingDeviceCode({
-      deviceCode: data.device_code,
-      userCode: data.user_code,
-      expiresAt: new Date(Date.now() + data.expires_in * 1000).toISOString(),
+      deviceCode: deviceCodeResponse.device_code,
+      userCode: deviceCodeResponse.user_code,
+      expiresAt: new Date(Date.now() + deviceCodeResponse.expires_in * 1000).toISOString(),
     });
 
-    let browserUrl = data.verification_uri_complete;
+    let browserUrl = deviceCodeResponse.verification_uri_complete;
 
     if (options?.forceNewSession) {
       // A stale local token would otherwise mask the account switch; pollDeviceCode()
@@ -145,7 +145,7 @@ export class AuthService {
       // caller must finish login in a fresh/incognito browser instead.
       const logoutUrl = new URL(`https://${domain}/v2/logout`);
       logoutUrl.searchParams.set("client_id", clientId);
-      logoutUrl.searchParams.set("returnTo", data.verification_uri_complete);
+      logoutUrl.searchParams.set("returnTo", deviceCodeResponse.verification_uri_complete);
       browserUrl = logoutUrl.toString();
       logger.info("Force new session: cleared local token, opening logout-redirect URL", {
         logoutUrl: browserUrl,
@@ -166,12 +166,12 @@ export class AuthService {
     }
 
     return {
-      deviceCode: data.device_code,
-      userCode: data.user_code,
-      verificationUri: data.verification_uri,
-      verificationUriComplete: data.verification_uri_complete,
-      expiresIn: data.expires_in,
-      interval: data.interval,
+      deviceCode: deviceCodeResponse.device_code,
+      userCode: deviceCodeResponse.user_code,
+      verificationUri: deviceCodeResponse.verification_uri,
+      verificationUriComplete: deviceCodeResponse.verification_uri_complete,
+      expiresIn: deviceCodeResponse.expires_in,
+      interval: deviceCodeResponse.interval,
       browserOpened: browserOpenResult.opened,
       browserOpenError: browserOpenResult.error,
     };
@@ -213,14 +213,14 @@ export class AuthService {
 
     try {
       const content = fs.readFileSync(this.pendingDeviceCodePath, "utf-8");
-      const data = JSON.parse(content) as {
+      const pendingDeviceCodeData = JSON.parse(content) as {
         deviceCode: string;
         userCode: string;
         expiresAt: string;
       };
 
       const now = new Date();
-      const expiresAt = new Date(data.expiresAt);
+      const expiresAt = new Date(pendingDeviceCodeData.expiresAt);
 
       if (now >= expiresAt) {
         logger.debug("Pending device code expired");
@@ -228,7 +228,7 @@ export class AuthService {
         return null;
       }
 
-      return data.deviceCode;
+      return pendingDeviceCodeData.deviceCode;
     } catch (error) {
       logger.warn("Failed to read pending device code", {
         error: error instanceof Error ? error.message : String(error),
@@ -386,10 +386,10 @@ export class AuthService {
     });
 
     while (Date.now() - startedAt < timeoutMs) {
-      const result = await this.pollDeviceCode(params.deviceCode);
+      const pollResult = await this.pollDeviceCode(params.deviceCode);
 
-      if (result.status !== DeviceCodePollStatus.Pending) {
-        return result;
+      if (pollResult.status !== DeviceCodePollStatus.Pending) {
+        return pollResult;
       }
 
       const remainingMs = timeoutMs - (Date.now() - startedAt);
@@ -430,8 +430,8 @@ export class AuthService {
         return {};
       }
 
-      const data = (await response.json()) as { email?: string; sub?: string };
-      return data;
+      const userInfoData = (await response.json()) as { email?: string; sub?: string };
+      return userInfoData;
     } catch (error) {
       logger.warn("User info request failed", {
         error: error instanceof Error ? error.message : String(error),
@@ -490,16 +490,23 @@ export class AuthService {
       const content = fs.readFileSync(this.oauthSessionFilePath, "utf-8");
       const storedAuth = JSON.parse(content) as IStoredAuth;
       const activeRuntimeTarget = getActiveRuntimeTarget();
+      const config = getConfig();
+      const expectedAuth0Domain = config.localQa.auth0.domain;
+      const tokenIssuer = extractJwtIssuer(storedAuth.accessToken);
 
       if (
         !isStoredAuthForRuntimeTarget({
           storedRuntimeTarget: storedAuth.runtimeTarget,
           activeRuntimeTarget: activeRuntimeTarget,
+          tokenIssuer: tokenIssuer,
+          expectedAuth0Domain: expectedAuth0Domain,
         })
       ) {
         logger.warn("Ignoring stored auth issued for a different runtime target", {
           storedRuntimeTarget: storedAuth.runtimeTarget ?? "unrecorded",
           activeRuntimeTarget: activeRuntimeTarget,
+          tokenIssuer: tokenIssuer ?? "undecodable",
+          expectedAuth0Domain: expectedAuth0Domain,
         });
         return null;
       }
