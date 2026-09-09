@@ -42,3 +42,29 @@ describe("renderReport", () => {
     expect(markdown).toContain("**Total tokens:** 1000");
   });
 });
+
+describe("step budget disclosure", () => {
+  const result = {
+    taskId: "T--0",
+    outcome: BenchmarkOutcome.Pass,
+    finalAnswer: "a",
+    studioStatus: "success",
+    stepCount: 3,
+    durationMs: 10,
+    tokensUsed: 5,
+    trajectoryDir: "d",
+  };
+
+  it("states the step budget the run used", () => {
+    // A pass rate is only comparable to a published one at the same budget, so
+    // the number and the budget that produced it travel together.
+    expect(renderReport([result], { maxSteps: 15 })).toMatch(/step budget.*15/i);
+  });
+
+  it("marks a raised budget as a deviation rather than leaving it to a footnote", () => {
+    const rendered = renderReport([result], { maxSteps: 30 });
+
+    expect(rendered).toMatch(/30/);
+    expect(rendered).toMatch(/not comparable|deviat/i);
+  });
+});

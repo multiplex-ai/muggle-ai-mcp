@@ -5,7 +5,6 @@ import { fileURLToPath } from "node:url";
 
 import { parseCliArgs } from "./cli/args";
 import {
-  MAX_STEPS_PER_TASK,
   PARTIAL_LOG_FILENAME,
   REPORT_FILENAME,
   TASK_TIMEOUT_MS,
@@ -21,6 +20,7 @@ import {
 import { renderReport } from "./report/report";
 import {
   JUDGE_API_KEY_ENV_VAR,
+  JUDGE_MAX_RETRIES,
   TRAJECTORY_MANIFEST_FILENAME,
 } from "./judge/constants";
 import { createClaudeJudgeInvoker } from "./judge/claude-judge";
@@ -94,7 +94,13 @@ const mainAsync = async (): Promise<void> => {
         `Export it before running the benchmark.`,
     );
   }
-  const invokeJudgeAsync = createClaudeJudgeInvoker({ client: new Anthropic() });
+  // The SDK's default of two retries was not enough: a busy hour returned 529
+  // Overloaded past it and cost two tasks their verdict, which excludes them
+  // from the denominator. A judge that gives up shrinks the evidence behind the
+  // score, so it retries well past the point of politeness.
+  const invokeJudgeAsync = createClaudeJudgeInvoker({
+    client: new Anthropic({ maxRetries: JUDGE_MAX_RETRIES }),
+  });
 
   // One profile for the whole batch. Studio authenticates with its own client
   // credentials and reads this only for identity, so there is nothing per-task
@@ -117,7 +123,7 @@ const mainAsync = async (): Promise<void> => {
           outDir: options.outDir,
           studioBinPath: studioBinPath,
           authFilePath: authFilePath,
-          maxSteps: MAX_STEPS_PER_TASK,
+          maxSteps: options.maxSteps,
           taskTimeoutMs: TASK_TIMEOUT_MS,
           spawnStudio: spawnStudioProcess,
           fileSystem: nodeTaskFileSystem,
@@ -158,7 +164,7 @@ const mainAsync = async (): Promise<void> => {
     tasks: tasks,
     results: [...resumedResults, ...freshResults],
   });
-  fs.writeFileSync(reportPath, `${renderReport(orderedResults)}\n`, "utf8");
+  fs.writeFileSync(reportPath, `${renderReport(orderedResults, { maxSteps: options.maxSteps })}\n`, "utf8");
 
   process.stdout.write(`Report: ${reportPath}\n`);
 };

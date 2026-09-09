@@ -1,3 +1,4 @@
+import { MAX_STEPS_PER_TASK } from "../domain/constants";
 import { BenchmarkOutcome, type TaskResult } from "../domain/types";
 
 /**
@@ -8,10 +9,21 @@ import { BenchmarkOutcome, type TaskResult } from "../domain/types";
  * capability regression. This differs from how most published browser-agent
  * scores are computed, so any published number must say so.
  *
+ * The step budget is printed beside the pass rate, and a budget above
+ * WebVoyager's own cap is labelled a deviation in the same line as the score.
+ * A raised budget makes the number incomparable to every published result, and
+ * a caveat that lives only in the surrounding prose is a caveat that gets
+ * dropped the first time someone quotes the figure.
+ *
  * Output shape: a Markdown document opening with
  * `**Pass rate:** 50.0% (scored 2, infrastructure errors 1)`.
+ *
+ * @param params.maxSteps - Steps each task was allowed.
  */
-export const renderReport = (results: TaskResult[]): string => {
+export const renderReport = (
+  results: TaskResult[],
+  { maxSteps }: { maxSteps: number } = { maxSteps: MAX_STEPS_PER_TASK },
+): string => {
   const passes = results.filter((result) => result.outcome === BenchmarkOutcome.Pass).length;
   const fails = results.filter((result) => result.outcome === BenchmarkOutcome.Fail).length;
   const errors = results.filter((result) => result.outcome === BenchmarkOutcome.Error).length;
@@ -23,6 +35,11 @@ export const renderReport = (results: TaskResult[]): string => {
     `# Browser-capability benchmark`,
     ``,
     `**Pass rate:** ${passRate.toFixed(1)}% (scored ${scored}, infrastructure errors ${errors})`,
+    `**Step budget:** ${maxSteps}${
+      maxSteps > MAX_STEPS_PER_TASK
+        ? ` — raised above WebVoyager's cap of ${MAX_STEPS_PER_TASK}; this score is NOT comparable to published WebVoyager results`
+        : ""
+    }`,
     `**Total tokens:** ${totalTokens}`,
     ``,
     `| Task | Outcome | Steps | Duration (ms) | Tokens |`,

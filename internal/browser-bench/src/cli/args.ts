@@ -1,4 +1,4 @@
-import { DEFAULT_CONCURRENCY } from "../domain/constants";
+import { DEFAULT_CONCURRENCY, MAX_STEPS_PER_TASK } from "../domain/constants";
 import { CliFlag, type BenchmarkCliOptions } from "./types";
 
 const readFlagValue = (argv: string[], flagIndex: number): string => {
@@ -44,6 +44,7 @@ export const parseCliArgs = ({
     concurrency: DEFAULT_CONCURRENCY,
     outDir: defaultOutDir,
     resume: false,
+    maxSteps: MAX_STEPS_PER_TASK,
   };
 
   let index = 0;
@@ -68,6 +69,9 @@ export const parseCliArgs = ({
         break;
       case CliFlag.Concurrency:
         options.concurrency = readPositiveInteger(argv, index);
+        break;
+      case CliFlag.MaxSteps:
+        options.maxSteps = readPositiveInteger(argv, index);
         break;
       default:
         throw new Error(`Unknown flag ${flag}. Accepted: ${Object.values(CliFlag).join(", ")}.`);
