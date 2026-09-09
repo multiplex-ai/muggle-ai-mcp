@@ -22,3 +22,10 @@ export const JUDGE_API_KEY_ENV_VAR = "ANTHROPIC_API_KEY";
 
 /** Studio writes the judge's input manifest here, inside each task's trajectory directory. */
 export const TRAJECTORY_MANIFEST_FILENAME = "trajectory.json";
+
+/**
+ * Judge retries before an attempt is abandoned. Well above the SDK default of 2:
+ * a 529 that outlasts the retries costs the task its verdict and removes it from
+ * the pass-rate denominator, which is a worse outcome than waiting.
+ */
+export const JUDGE_MAX_RETRIES = 8;

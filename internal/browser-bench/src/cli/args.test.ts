@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONCURRENCY } from "../domain/constants";
+import { DEFAULT_CONCURRENCY, MAX_STEPS_PER_TASK } from "../domain/constants";
 import { parseCliArgs } from "./args";
 
 const parse = (argv: string[]) =>
@@ -16,6 +16,7 @@ describe("parseCliArgs", () => {
       concurrency: DEFAULT_CONCURRENCY,
       outDir: "/defaults/reports",
       resume: false,
+      maxSteps: MAX_STEPS_PER_TASK,
     });
   });
 
@@ -28,6 +29,7 @@ describe("parseCliArgs", () => {
       concurrency: 4,
       outDir: "/tmp/run",
       resume: false,
+      maxSteps: MAX_STEPS_PER_TASK,
     });
   });
 
@@ -61,5 +63,29 @@ describe("parseCliArgs", () => {
 
   it("rejects a zero count", () => {
     expect(() => parse(["--concurrency", "0"])).toThrow(/positive whole number/);
+  });
+});
+
+describe("step budget flag", () => {
+  it("defaults to WebVoyager's own cap so results stay comparable", () => {
+    expect(
+      parseCliArgs({ argv: [], defaultTasksPath: "t.jsonl", defaultOutDir: "out" }).maxSteps,
+    ).toBe(MAX_STEPS_PER_TASK);
+  });
+
+  it("accepts a raised budget, which the report then has to disclose", () => {
+    expect(
+      parseCliArgs({
+        argv: ["--max-steps", "30"],
+        defaultTasksPath: "t.jsonl",
+        defaultOutDir: "out",
+      }).maxSteps,
+    ).toBe(30);
+  });
+
+  it("rejects a budget that is not a positive whole number", () => {
+    expect(() =>
+      parseCliArgs({ argv: ["--max-steps", "0"], defaultTasksPath: "t.jsonl", defaultOutDir: "out" }),
+    ).toThrow(/max-steps/i);
   });
 });

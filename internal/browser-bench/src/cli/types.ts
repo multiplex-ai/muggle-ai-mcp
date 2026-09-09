@@ -5,6 +5,7 @@ export enum CliFlag {
   Concurrency = "--concurrency",
   Out = "--out",
   Resume = "--resume",
+  MaxSteps = "--max-steps",
 }
 
 /** One benchmark run's configuration, with every default already resolved. */
@@ -15,4 +16,6 @@ export interface BenchmarkCliOptions {
   concurrency: number;
   outDir: string;
   resume: boolean;
+  /** Steps an agent may take per task. Defaults to WebVoyager's own cap. */
+  maxSteps: number;
 }
