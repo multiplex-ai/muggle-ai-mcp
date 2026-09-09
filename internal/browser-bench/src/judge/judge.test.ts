@@ -25,6 +25,46 @@ describe("judgeTaskAsync", () => {
     expect(verdict.outcome).toBe(BenchmarkOutcome.Fail);
   });
 
+  it("maps BLOCKED to Blocked, so a bot-defence interstitial is not scored as a capability failure", async () => {
+    const verdict = await judgeTaskAsync({
+      instruction: "Look up the word 'ephemeral'.",
+      finalAnswer: "The site showed a security verification page.",
+      screenshotPaths: [],
+      invokeJudgeAsync: async () =>
+        "Thoughts: every screenshot shows Cloudflare's verification hold.\nStatus: BLOCKED",
+    });
+
+    expect(verdict.outcome).toBe(BenchmarkOutcome.Blocked);
+  });
+
+  it("scores a completed task Pass even when the reply also names an interstitial", async () => {
+    const verdict = await judgeTaskAsync({
+      instruction: "Look up the word 'ephemeral'.",
+      finalAnswer: "ephemeral: lasting a very short time.",
+      screenshotPaths: [],
+      invokeJudgeAsync: async () =>
+        "Thoughts: an interstitial appeared but cleared, and the definition is correct.\nStatus: SUCCESS",
+    });
+
+    expect(verdict.outcome).toBe(BenchmarkOutcome.Pass);
+  });
+
+  it("tells the judge how to report a site that refused the agent", async () => {
+    let seenPrompt = "";
+
+    await judgeTaskAsync({
+      instruction: "q",
+      finalAnswer: "a",
+      screenshotPaths: [],
+      invokeJudgeAsync: async (prompt) => {
+        seenPrompt = prompt;
+        return "Status: SUCCESS";
+      },
+    });
+
+    expect(seenPrompt).toContain("Status: BLOCKED");
+  });
+
   it("treats an unparseable judge response as Fail, never Error", async () => {
     const verdict = await judgeTaskAsync({
       instruction: "q",

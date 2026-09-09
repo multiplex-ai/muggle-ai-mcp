@@ -6,11 +6,19 @@ export interface BenchmarkTask {
   startUrl: string;
 }
 
-/** How a single task attempt is counted toward (or excluded from) the score. */
+/**
+ * How a single task attempt is counted toward (or excluded from) the score.
+ *
+ * `Pass` and `Fail` are the whole scored denominator. `Error` (the harness or
+ * studio failed) and `Blocked` (the site refused the agent with a bot-defence
+ * interstitial, so its capability was never exercised) are both counted and
+ * reported, never scored — neither measures what the agent can do.
+ */
 export enum BenchmarkOutcome {
   Pass = "pass",
   Fail = "fail",
   Error = "error",
+  Blocked = "blocked",
 }
 
 /** One task attempt's recorded result. */

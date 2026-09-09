@@ -17,6 +17,9 @@ export const JUDGE_IMAGE_MEDIA_TYPES: Record<string, string> = {
   ".gif": "image/gif",
 };
 
+/** Opens the judge's verdict line. The prompt asks for it and the parser reads it, so both build from here. */
+export const JUDGE_VERDICT_LINE_PREFIX = "Status:";
+
 /** Names the credential the judge needs; the batch refuses to start without it. */
 export const JUDGE_API_KEY_ENV_VAR = "ANTHROPIC_API_KEY";
 

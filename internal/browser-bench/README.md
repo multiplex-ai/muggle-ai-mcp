@@ -32,6 +32,26 @@ Concurrency is memory-bound: every task is a full Electron instance, so raising
 it past what the machine's RAM allows makes tasks fail for reasons the benchmark
 should not be measuring.
 
+### Outcomes
+
+| Outcome | Means | In the pass rate |
+| :--- | :--- | :--- |
+| `pass` | The judge read the final answer against the screenshots and accepted it | yes |
+| `fail` | The judge rejected it | yes |
+| `blocked` | The site served an automated-access check — a security or bot verification interstitial, a "checking your browser" hold, an access denial — so the agent never reached the content | no |
+| `error` | The harness or studio failed: non-zero exit, missing or unreadable result file, or a task outliving `TASK_TIMEOUT_MS` | no |
+
+`blocked` and `error` are counted and reported on their own report lines but
+kept out of the denominator: neither measures what the agent can do, and
+scoring them understates it.
+
+The judge returns `blocked` as its own verdict, chosen from the same status line
+that carries `SUCCESS` and `NOT SUCCESS`. It is the only party that has already
+read the screenshots, and asking it to pick a token beats matching English in
+its reasoning — interstitial copy varies by vendor and locale. The harness
+classifies a block, never defeats one: fingerprint evasion and stealth browser
+flags are out of scope, and would put runs the wrong side of site terms.
+
 ### Output tree
 
 ```
@@ -84,10 +104,11 @@ Studio writes `result.json`:
 }
 ```
 
-Exit 0 means the attempt completed — `studioStatus: "success"` scores a pass,
-any other status a fail. A non-zero exit, a missing or unreadable result file,
-or outliving `TASK_TIMEOUT_MS` (10 minutes) kills the process and records an
-infrastructure error instead, which is excluded from the pass-rate denominator.
+Exit 0 means the attempt completed and the judge scores it; `studioStatus` is
+kept beside the verdict for triage and never decides it. A non-zero exit, a
+missing or unreadable result file, or outliving `TASK_TIMEOUT_MS` (10 minutes)
+kills the process and records an infrastructure error instead, which is excluded
+from the pass-rate denominator.
 
 `tokensUsed` carries studio's reported spend for the attempt, so a score is
 always reportable next to what it cost. A build that predates token reporting
